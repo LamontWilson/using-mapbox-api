@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8' />
+  <title>Starkville, MS</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <!-- Import Mapbox GL JS  -->
+  <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.10.1/mapbox-gl.js'></script>
+  <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.10.1/mapbox-gl.css' rel='stylesheet' />
+	<!--Geocode JS-->
+	<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.min.js"></script>
+	<!--diving directions-->
+	<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.2/mapbox-gl-directions.js"></script>
+	<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.2/mapbox-gl-directions.css"
+type="text/css" />
+  <!-- Import Assembly -->
+  <link href='https://api.mapbox.com/mapbox-assembly/v0.23.2/assembly.min.css' rel='stylesheet'>
+  <script src='https://api.mapbox.com/mapbox-assembly/v0.23.2/assembly.js'></script>
+  <!-- Import jQuery -->
+  <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script>
+
+  <style>
+	.geocoder {
+		position: absolute;
+		z-index: 1;
+		width: 50%;
+		left: 50%;
+		margin-left: -25%;
+		top: 10px;
+	}
+
+	.mapboxgl-ctrl-geocoder {
+		min-width: 100%;
+	}
+
+	body {
+		margin: 0;
+		padding: 0;
+	}
+
+  #map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+  }
+  </style>
+
+</head>
+
+<body>
+  <!-- Create a container for the map and geocoder-->
+  <div id='map'></div>
+	<div id='geocoder' class='geocoder'></div>
+
+	<!--holds the isochrone options and uses Assembly classes for styling.-->
+	<div class='absolute fl my12 mx12 py12 px12 bg-gray-faint round'>
+  <form id='params'>
+    <h4 class='txt-m txt-bold mb6'>Choose a travel mode:</h4>
+    <div class='mb12 mr12 toggle-group align-center'>
+      <label class='toggle-container'>
+        <input name='profile' type='radio' value='walking'>
+        <div class='toggle toggle--active-null toggle--null'>Walking</div>
+      </label>
+
+      <label class='toggle-container'>
+        <input name='profile' type='radio' value='cycling'>
+        <div class='toggle toggle--active-null toggle--null'>Cycling</div>
+      </label>
+
+      <label class='toggle-container'>
+        <input name='profile' type='radio' value='driving' checked>
+        <div class='toggle toggle--active-null toggle--null'>Driving</div>
+      </label>
+    </div>
+
+    <h4 class='txt-m txt-bold mb6'>Choose a maximum duration:</h4>
+    <div class='mb12 mr12 toggle-group align-center'>
+      <label class='toggle-container'>
+        <input name='duration' type='radio' value='10' checked>
+        <div class='toggle toggle--active-null toggle--null'>10 min</div>
+      </label>
+
+      <label class='toggle-container'>
+        <input name='duration' type='radio' value='20'>
+        <div class='toggle toggle--active-null toggle--null'>20 min</div>
+      </label>
+
+      <label class='toggle-container'>
+        <input name='duration' type='radio' value='30'>
+        <div class='toggle toggle--active-null toggle--null'>30 min</div>
+      </label>
+  </form>
+</div>
+
+  <script>
+    // Add your Mapbox access token
+		mapboxgl.accessToken = 'pk.eyJ1IjoiaHViYmFyZGIiLCJhIjoiY2thN25jazJqMDVzcjJ4cG1oazRkcm0zNCJ9.ouHoCgXUTHpqo7y2N8zV0A';
+    var map = new mapboxgl.Map({
+      container: 'map', // Specify the container ID
+      style: 'mapbox://styles/mapbox/streets-v11', // Specify which map style to use
+			center: [-88.790485, 33.471713], // Specify the starting position, Starkville MS
+      zoom: 11.5, // Specify the starting zoom
+    });
+
+		// // Create variables to use in getIso()
+		var urlBase = 'https://api.mapbox.com/isochrone/v1/mapbox/';
+		var lon = -88.790485;
+		var lat = 33.471713;
+		var profile = 'driving';
+		var minutes = 10;
+
+		// Create a function that sets up the Isochrone API query then makes an Ajax call
+		// $curl "https://api.mapbox.com/isochrone/v1/mapbox/driving/lon,lat?contours_minutes=10,20,30&polygons=true&access_token=YOUR_MAPBOX_ACCESS_TOKEN"
+
+		function getIso() {
+  		var query = urlBase + profile + '/' + lon + ',' + lat + '?contours_minutes=' + minutes + '&polygons=true&access_token=' + mapboxgl.accessToken;
+
+  			$.ajax({
+    			method: 'GET',
+    			url: query
+  				}).done(function(data) {
+				// Set the 'iso' source's data to what's returned by the API query
+					map.getSource('iso').setData(data);  })
+				};
+
+				// color for geolocator marker
+				var marker = new mapboxgl.Marker({
+ 				'color': '#314ccd'
+				});
+
+		// Create a LngLat object to use in the marker initialization
+		var lngLat = {
+ 			lon: lon,
+ 			lat: lat
+		};
+
+		map.on('load', function() {
+
+			// Initialize the marker at the query coordinates
+			marker.setLngLat(lngLat).addTo(map);
+ 			// When the map loads, add the source and layer
+ 			map.addSource('iso', {
+   		type: 'geojson',
+   		data: {
+     		'type': 'FeatureCollection',
+     		'features': []}
+			 		});
+			map.addLayer({
+				'id': 'isoLayer',
+   			'type': 'fill',
+   			// Use "iso" as the data source for this layer
+   			'source': 'iso',
+   			'layout': {},
+   			'paint': {
+     		// The fill color for the layer is set to a light purple
+     		'fill-color': '#5a3fc0',
+     		'fill-opacity': 0.3
+   			}
+ 			}, "poi-label");
+			// Make the API call
+			getIso();
+		});
+
+		// Target the "params" form in the HTML portion
+		var params = document.getElementById('params');
+
+		// When a user changes the value of profile or duration by clicking a button,
+    // change the parameter's value and make the API query again
+		params.addEventListener('change', function(e) {
+			if (e.target.name === 'profile') {
+				profile = e.target.value;
+				getIso();
+			} else if (e.target.name === 'duration') {
+				minutes = e.target.value;
+				getIso();
+			}
+		});
+
+		//orange marker for geocoder
+		var geocoder = new MapboxGeocoder({
+			accessToken: mapboxgl.accessToken,
+			marker: {
+				color: 'orange'
+			},
+			mapboxgl: mapboxgl
+		});
+
+		//add geocoder searchbox when map loads
+		document.getElementById('geocoder').appendChild(geocoder.onAdd(map));
+		//step-by-step directions in the top right
+		map.addControl(
+			new MapboxDirections({
+				accessToken: mapboxgl.accessToken
+			}),
+			'top-right'
+		);
+	</script>
+</body>
+
+</html>
